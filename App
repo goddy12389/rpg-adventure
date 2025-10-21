@@ -1,0 +1,169 @@
+import streamlit as st
+import random
+
+# -----------------------------
+# Initialize session state
+# -----------------------------
+if 'step' not in st.session_state:
+    st.session_state.step = 0
+if 'player_name' not in st.session_state:
+    st.session_state.player_name = ""
+if 'inventory' not in st.session_state:
+    st.session_state.inventory = []
+if 'health' not in st.session_state:
+    st.session_state.health = 100
+if 'enemy_health' not in st.session_state:
+    st.session_state.enemy_health = 0
+if 'gold' not in st.session_state:
+    st.session_state.gold = 0
+if 'shop_items' not in st.session_state:
+    st.session_state.shop_items = ["Health Potion (+20 HP) - 10 gold", "Steel Sword (+20 dmg) - 20 gold"]
+if 'dungeon_level' not in st.session_state:
+    st.session_state.dungeon_level = 1
+if 'secret_endings' not in st.session_state:
+    st.session_state.secret_endings = []
+
+# -----------------------------
+# Reset game function
+# -----------------------------
+def reset_game():
+    st.session_state.step = 0
+    st.session_state.player_name = ""
+    st.session_state.inventory = []
+    st.session_state.health = 100
+    st.session_state.enemy_health = 0
+    st.session_state.gold = 0
+    st.session_state.shop_items = ["Health Potion (+20 HP) - 10 gold", "Steel Sword (+20 dmg) - 20 gold"]
+    st.session_state.dungeon_level = 1
+    st.session_state.secret_endings = []
+
+# -----------------------------
+# Streamlit Title
+# -----------------------------
+st.title("🛡️ RPG Adventure: Epic Quest")
+
+# -----------------------------
+# Step 0: Player Name
+# -----------------------------
+if st.session_state.step == 0:
+    st.session_state.player_name = st.text_input("Enter your hero's name:")
+    if st.button("Start Adventure") and st.session_state.player_name:
+        st.session_state.step = 1
+
+# -----------------------------
+# Step 1: Town / Shop Selection
+# -----------------------------
+elif st.session_state.step == 1:
+    st.write(f"Welcome, {st.session_state.player_name}! You are in the town square.")
+    st.write(f"Gold: {st.session_state.gold} | Health: {st.session_state.health}")
+    st.write("You can visit the shop or enter the dungeon.")
+
+    action = st.radio("What do you want to do?", ["Enter Dungeon", "Visit Shop"])
+    if st.button("Go"):
+        if action == "Enter Dungeon":
+            st.session_state.step = 2
+        else:
+            st.session_state.step = 3
+
+# -----------------------------
+# Step 2: Dungeon Exploration
+# -----------------------------
+elif st.session_state.step == 2:
+    st.write(f"🕹️ You enter Dungeon Level {st.session_state.dungeon_level}.")
+    enemy_health = random.randint(30, 60) + (st.session_state.dungeon_level * 10)
+    st.session_state.enemy_health = enemy_health
+    enemy_name = random.choice(["Goblin", "Orc", "Troll", "Skeleton"])
+    st.write(f"A wild {enemy_name} appears with {st.session_state.enemy_health} HP!")
+
+    action = st.radio("Do you Fight or Run?", ["Fight", "Run"])
+    if st.button("Continue"):
+        if action == "Fight":
+            # Battle loop
+            player_attack = random.randint(15, 30)
+            if "Steel Sword" in st.session_state.inventory:
+                player_attack += 20
+            if "Magic Amulet" in st.session_state.inventory:
+                player_attack += 15
+            enemy_attack = random.randint(10, 25)
+            st.session_state.enemy_health -= player_attack
+            st.session_state.health -= enemy_attack
+            st.write(f"You hit the {enemy_name} for {player_attack} damage!")
+            st.write(f"The {enemy_name} hits you for {enemy_attack} damage!")
+
+            if st.session_state.enemy_health <= 0:
+                gold_reward = random.randint(10, 30)
+                st.session_state.gold += gold_reward
+                treasure = random.choice(["Health Potion", "Steel Sword", "Magic Amulet", "Nothing"])
+                if treasure != "Nothing":
+                    st.session_state.inventory.append(treasure)
+                st.write(f"🎉 You defeated the {enemy_name}! You earned {gold_reward} gold and found: {treasure}")
+                st.session_state.dungeon_level += 1
+                st.session_state.step = 2
+            elif st.session_state.health <= 0:
+                st.write("💀 You were defeated! Game Over.")
+                if st.button("Play Again"):
+                    reset_game()
+        else:
+            # Run chance
+            if random.random() > 0.5:
+                st.write("You successfully escaped!")
+                st.session_state.step = 1
+            else:
+                damage = random.randint(5, 15)
+                st.session_state.health -= damage
+                st.write(f"You failed to escape and took {damage} damage. Health: {st.session_state.health}")
+                if st.session_state.health <= 0:
+                    st.write("💀 You were defeated! Game Over.")
+                    if st.button("Play Again"):
+                        reset_game()
+
+# -----------------------------
+# Step 3: Shop + Minipay Section
+# -----------------------------
+elif st.session_state.step == 3:
+    st.write("🏪 Welcome to the shop!")
+    st.write(f"Gold: {st.session_state.gold} | Inventory: {st.session_state.inventory}")
+    st.write("Items for sale:")
+
+    for i, item in enumerate(st.session_state.shop_items):
+        st.write(f"{i+1}. {item}")
+
+    choice = st.number_input("Enter the number of the item you want to buy (0 to leave):", min_value=0, max_value=len(st.session_state.shop_items), step=1)
+    if st.button("Buy"):
+        if choice == 0:
+            st.session_state.step = 1
+        else:
+            item = st.session_state.shop_items[choice-1]
+            cost = int(''.join(filter(str.isdigit, item)))
+            if st.session_state.gold >= cost:
+                st.session_state.gold -= cost
+                if "Health Potion" in item:
+                    st.session_state.health += 20
+                    st.write("💖 Health restored by 20!")
+                else:
+                    st.session_state.inventory.append(item.split(" - ")[0])
+                    st.write(f"✅ You bought {item.split(' - ')[0]}!")
+            else:
+                st.write("❌ Not enough gold!")
+            st.session_state.step = 1
+
+    # --- Added Minipay + WhatsApp Section ---
+    st.markdown("---")
+    st.subheader("💰 Buy Gold via Minipay")
+
+    st.write("Want to buy 100 gold for ₦200?")
+    st.write("💳 Pay using **Minipay** to this account: @goddy (replace with your real Minipay name)")
+    st.write("After paying, message me on WhatsApp to confirm your gold purchase.")
+
+    st.link_button(
+        "💬 Message on WhatsApp to Confirm Payment",
+        "https://wa.me/2349043459838?text=Hello%20I%20want%20to%20buy%20gold%20in%20your%20RPG%20game"
+    )
+
+# -----------------------------
+# Secret Endings
+# -----------------------------
+if st.session_state.dungeon_level >= 5 and "Magic Amulet" in st.session_state.inventory:
+    if "Ancient Ending" not in st.session_state.secret_endings:
+        st.session_state.secret_endings.append("Ancient Ending")
+        st.write("✨ Secret Ending Unlocked: You have discovered the Ancient Treasure! Congratulations!")
